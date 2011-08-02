@@ -1,0 +1,45 @@
+<!doctype html>
+<html>
+  <head>
+    <title>re.edit</title>
+    <link rel="stylesheet" href="/cm/lib/codemirror.css">
+    <script src="/cm/lib/codemirror.js"></script>
+    <!-- all modes -->
+    <script src="/cm/mode/javascript/javascript.js"></script>
+    <script src="/cm/mode/coffeescript/coffeescript.js"></script>
+    <script src="/cm/mode/clike/clike.js"></script>
+    <script src="/cm/mode/css/css.js"></script>
+    <script src="/cm/mode/diff/diff.js"></script>
+    <link rel="stylesheet" href="/cm/mode/diff/diff.css">
+    <script src="/cm/mode/xml/xml.js"></script>
+    <script src="/cm/mode/htmlmixed/htmlmixed.js"></script>
+    <script src="/cm/mode/python/python.js"></script>
+    <script src="/cm/mode/scheme/scheme.js"></script>
+    <!-- libs -->
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.js"></script>
+    <script src="/coffee-script.js"></script>
+    <script type="text/coffeescript" src="/editor.coffee"></script>
+    <link rel="stylesheet" href="/themes/default.css">
+    <link rel="stylesheet" href="/themes/editor.css">
+  </head>
+  <body>
+  <div id="goto-box" class="popup">
+    <div></div>
+    Goto: <input id="goto-input" />
+  </div>
+  <div id="command-box" class="popup">
+    <div></div>
+    Command: <input id="command-input" />
+  </div>
+  <div id="open-box" class="popup">
+    <div></div>
+    Open: <input id="file-input" />
+  </div>
+  <div id="search-box" class="popup">
+    Search:
+    <input type="text"  id="search-input">
+    Replace:
+    <input type="text" id="replace">
+  </div>
+  </body>
+</html>

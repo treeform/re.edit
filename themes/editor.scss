@@ -1,0 +1,79 @@
+$bg: #1e2224;
+$br: black;
+$text: #babdb6;
+$control: #3e4240;
+$highlight: #fcaf3e;
+
+body, textarea {
+  padding:0px;
+  margin:0px;
+  line-height: 1em;
+  font-family: monospace;
+
+  ::-webkit-scrollbar {
+    background: transparent;
+    border: 1px solid lighen($bg, 10%);
+    height: 4px;
+    width: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    //@include rounded(6px);
+    border-radius: 4px;
+    background: $control;
+    border: 2px solid rgba(0,0,0,0)
+  }
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+}
+.searched {
+  background: yellow;
+}
+
+.highlight {
+  color: $highlight;
+}
+
+input {
+  background: lighten($bg,5%);
+  border: none;
+  color: $text;
+  font-size: 1em;
+  line-height: 1em;
+  font-family: monospace;
+  padding:0px;
+  margin:0px;
+}
+
+.popup {
+  position: absolute;
+  bottom: 0px;
+  left: 0px;
+  right: 0px;
+  color: $text;
+  background: darken($bg, 5%);
+  z-index: 10;
+}
+
+#open-box {
+  input {
+    width: 300px;
+  }
+  div {
+    margin: 2px;
+  }
+}
+
+#search-box {
+  input {
+    width: 200px;
+  }
+}
+
+#command-box {
+  input {
+    width: 350px;
+  }
+}
