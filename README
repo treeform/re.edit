@@ -1,0 +1,3 @@
+Re.edit is a web based editor written in coffee script, nodejs, jquery and express.  Its normally operated by running the server on the local machine and interacting with it via the browser.  I recommend Safari because the entire title bar can be hidden and all the keys can be intercepted and you can tab easily to the primary browser like Chrome.  It utilizes CodeMirror2 as the "editor's pad" for motion, typing, selection and syntax highlighting.  
+
+I made the editor mainly so that I could say "I write my own tools" and to have some thing that I could understand 100% of.  I spend most of my day in front of this thing and I really want it to be my software designed for me by me.  But its on github on the off-chance you will find it useful as well.
