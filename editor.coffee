@@ -16,6 +16,7 @@ COMMANDKEY = 65
 
 current_pad = undefined
 
+saved_pos = {}
 
 esc = ->
     $("div.popup").hide()
@@ -194,12 +195,13 @@ class Pad
         current_pad = @
 
     open_file: (file_name) =>
-        @filename = file_name
         $.ajax "open"
             dataType: "json"
             data:
-                path: @filename
+                path: file_name
             success: (json) =>
+                saved_pos[@filename] = @edit.getCursor()
+                @filename = file_name
                 if json.error?
                     warn(json.error)
                     @edit.setOption("mode", null)
@@ -210,6 +212,8 @@ class Pad
                     json.mode = "text" if not json.mode?
                     @edit.setOption("mode", json.mode)
                     @edit.setValue(json.text)
+                    if @filename of saved_pos
+                        @edit.setCursor(saved_pos[@filename])
             error: (e) -> warn "could not open", @filename, e
 
     keys: (args...) =>
