@@ -15,7 +15,7 @@ ESC = 27
 COMMANDKEY = 65
 
 current_pad = undefined
-
+base_dir = "/"
 saved_pos = {}
 
 esc = ->
@@ -27,6 +27,11 @@ keys = (e) ->
         esc()
     else
         current_pad.keys(e)
+        for pad in pads
+            if pad != current_pad and pad.filename == current_pad.filename
+                pad.edit.setValue(current_pad.edit.getValue())
+                # todo copy highlighting too to stop fliker
+
 $(document).keydown(keys).keyup(keys).keypress(keys)
 
 pads = []
@@ -50,7 +55,6 @@ resize = ->
 
 $(window).resize(resize)
 
-
 $("#goto-box").hide()
 $("#goto-input").keyup (e) ->
     editor = current_pad.edit
@@ -60,6 +64,9 @@ $("#goto-input").keyup (e) ->
         editor.setCursor(line)
     if e.which == ENTER
         esc()
+
+# some commands here
+cd = (dir) -> base_dir = dir
 
 $("#command-box").hide()
 $("#command-input").keyup (e) ->
@@ -72,6 +79,7 @@ $("#command-input").keyup (e) ->
         js = CoffeeScript.compile(query)
         print js
         eval(js)
+        esc()
 
 marked = []
 last_pos = null
@@ -120,11 +128,49 @@ $("#search-input").keyup (e) ->
         last_query = query
         last_pos = cursor.to()
 
+$("#replace-input").keyup (e) ->
+    print "replace"
+    editor = current_pad.edit
+    m() for m in marked
+    marked = []
+    $input = $(e.currentTarget)
+    text = $("#search-input").val()
+    replace = $input.val()
+
+    print "replace", text, replace
+    return if not text
+
+    print e.which
+    if false and e.which == ENTER
+        # replace all
+        cursor = editor.getSearchCursor(text)
+        while cursor.findNext()
+            cursor.replace(replace)
+
+    if e.which == ENTER
+        # replace all
+        cursor = editor.getSearchCursor(text, off, false)
+        if e.shiftKey
+            c = cursor.findPrevious()
+        else
+            c = cursor.findNext()
+        if c
+            cursor.replace(replace)
+            editor.setSelection(cursor.from(), cursor.to())
+
 
 $("#open-box").hide()
 $("#file-input").keyup (e) ->
     $input = $(e.currentTarget)
     $sug = $input.prev()
+    s = $input.val()
+    m = s.match("(.*)/([^/]*$)")
+    if m
+        dir = m[1]
+        s = m[2]
+    else
+        dir = base_dir
+    print "dir", dir, "file", s
 
     if e.which == ESC
         $input.val("")
@@ -132,9 +178,9 @@ $("#file-input").keyup (e) ->
         current_pad.edit.focus()
     else if e.which == ENTER
         current_pad.open_file($input.val())
-        $input.val("")
-        $input.parent().hide()
         current_pad.edit.focus()
+        $input.val("")
+        esc()
     else if e.which == UP or e.which == DOWN
         chosen = $sug.find(".highlight")
         if chosen.size() == 0
@@ -155,14 +201,14 @@ $("#file-input").keyup (e) ->
         $.ajax "/suggest",
             dataType: "json"
             data:
-                s: $input.val()
+                "s": s
+                "dir": dir
             error: (e) -> warn "error", e
             success: (files) ->
                 $sug.children().remove()
                 for f in files
                     $sug.append("<div class='sug'>#{f}<div>")
                 #$sug.children().last().addClass("highlight")
-
 
 $.ajax "/start",
     dataType: "json"
@@ -189,7 +235,6 @@ class Pad
             matchBrackets: true
             onFocus: @focused
         pads.push(@)
-
 
     focused: =>
         current_pad = @
@@ -246,19 +291,19 @@ class Pad
             @edit.setCursor(pos)
         # open
         else if key.which == OKEY
-            print "open"
+            esc()
             $("#open-box").show()
             $("#file-input").focus()
         else if key.which == SEARCHKEY
-            print "open"
+            esc()
             $("#search-box").show()
             $("#search-input").focus()
         else if key.which == COMMANDKEY
-            print "command"
+            esc()
             $("#command-box").show()
             $("#command-input").focus()
         else if key.which == GOTOKEY
-            print "goto"
+            esc()
             $("#goto-box").show()
             $("#goto-input").focus()
         key.stopPropagation()

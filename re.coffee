@@ -25,11 +25,14 @@ findem = (dir, s) ->
     ls = child_process.exec(
         "find #{dir} #{s} -maxdepth 5")
     files = []
+    ls.data = ""
     ls.stdout.on "data", (data) ->
-        for line in data.split("\n")
+        ls.data += data
+    ls.on "exit", ->
+        for line in ls.data.split("\n")
             if line.length > 0
                 files.push(line)
-    ls.on "exit", -> ev.emit("end", files)
+        ev.emit("end", files)
     return ev
 
 recent_files = []
@@ -56,12 +59,8 @@ app.get '/exit', (req, res) ->
 app.get '/suggest', (req, res) ->
     throw "steve!" if res.socket.remoteAddress != "127.0.0.1"
     s = req.param("s")
-    m = s.match("(.*)/([^/]*$)")
-    if m
-        dir = m[1]
-        s = m[2]
-    else
-        dir = process.cwd()
+    dir = req.param("dir")
+    print "s", s, "dir", dir
     finder = findem(dir, s)
     finder.on 'end', (files) ->
         files = (f for f in files when not f.match ("\.pyc|~|\.git|\.bzr$"))
@@ -110,11 +109,6 @@ app.post '/save', (req, res) ->
     fs.writeFile filename, text, (err) ->
         if err
             throw err
-
-    m = filename.match("(.*)/([^/]*$)")
-    if m
-        dir = m[1]
-        process.chdir(dir)
     res.send({"done":text})
 
 ###
