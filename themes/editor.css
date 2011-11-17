@@ -16,7 +16,7 @@ body, textarea {
     background: transparent; }
 
 .searched {
-  background: yellow; }
+  background: #6C2C03; }
 
 .highlight {
   color: #fcaf3e; }
@@ -36,8 +36,8 @@ input {
   bottom: 0px;
   left: 0px;
   right: 0px;
-  color: #babdb6;
-  background: #121516;
+  color: #AAA;
+  background: #070808;
   z-index: 10; }
 
 #open-box input {

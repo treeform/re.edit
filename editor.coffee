@@ -13,13 +13,21 @@ SEARCHKEY = 186
 GOTOKEY = 89
 ESC = 27
 COMMANDKEY = 65
+TAB = 9
 
 current_pad = undefined
 base_dir = "/"
 saved_pos = {}
+marked = []
 
 esc = ->
+    # remove any selections
+    if marked
+        m() for m in marked
+        marked = []
+    # remove popups
     $("div.popup").hide()
+    # focus on the editor
     current_pad.edit.focus()
 
 keys = (e) ->
@@ -81,7 +89,6 @@ $("#command-input").keyup (e) ->
         eval(js)
         esc()
 
-marked = []
 last_pos = null
 last_query = null
 $("#search-box").hide()
@@ -207,6 +214,7 @@ $("#file-input").keyup (e) ->
             success: (files) ->
                 $sug.children().remove()
                 for f in files
+                    f = f.replace(s,"<b>#{s}</b>")
                     $sug.append("<div class='sug'>#{f}<div>")
                 #$sug.children().last().addClass("highlight")
 
@@ -219,6 +227,48 @@ $.ajax "/start",
         for pad in pads
             pad.open_file(opened_files[i])
             i -= 1
+
+
+common_str = (strs) ->
+    return "" if strs.length == 0
+    return strs[0] if strs.length == 1
+    first = strs[0]
+    common = ""
+    fail = false
+    for c,i in first
+        for str in strs
+            if str[i] != c
+                fail = true
+                break
+        break if fail
+        common += c
+    return common
+
+
+gcd = (a, b) ->
+    while b
+        [a, b] = [b, a % b]
+    return a
+
+guess_indent = (text) ->
+    indents = {}
+    for line in text.split("\n")
+        indent = line.match(/^\s*/)[0].length
+        continue if indent == 0
+        if indent of indents
+            indents[indent] += 1
+        else
+            indents[indent] = 1
+    indents = ([k*1,v] for k,v of indents)
+    indents = indents.sort (a,b) -> b[1] - a[1]
+    indents = (i[0] for i in indents)
+    if indents.length == 1
+        return indents[0]
+    if indents.length == 0
+        return 4
+    indent = gcd(indents[0], indents[1])
+    #print "indents", indents, indent
+    return indent
 
 class Pad
     # global vars?
@@ -247,9 +297,10 @@ class Pad
             success: (json) =>
                 saved_pos[@filename] = @edit.getCursor()
                 @filename = file_name
+                print json
                 if json.error?
                     warn(json.error)
-                    @edit.setOption("mode", null)
+                    @edit.setOption("mode", json.mode)
                     @edit.setValue("")
                 else
                     @filename = json.path
@@ -257,12 +308,40 @@ class Pad
                     json.mode = "text" if not json.mode?
                     @edit.setOption("mode", json.mode)
                     @edit.setValue(json.text)
+                    @edit.setOption("indentUnit", guess_indent(json.text))
+                    @edit.setOption("electricChars", false)
+                    @edit.setOption("onKeyEvent", @key_hook)
                     if @filename of saved_pos
                         @edit.setCursor(saved_pos[@filename])
             error: (e) -> warn "could not open", @filename, e
 
+    key_hook: (e, key) =>
+        # auto complete on tab if tabbing after a word
+        if key.which == TAB and key.type == "keydown"
+            pos = @edit.getCursor()
+            line = @edit.getLine(pos.line)
+            next = line[pos.ch]
+            if next == undefined or next.match(/\W/)
+                string = line.substr(0, pos.ch)
+                string = string.match(/\w+$/)
+                if string
+                    options = {}
+                    words = @edit.getValue().split(/\W+/).sort()
+                    if words
+                        for word in words
+                            word_match = word.match("^" + string + "(.+)")
+                            if word_match and word_match[1] != ""
+                                options[word_match[1]] = true
+                        add = common_str(k for k of options)
+                        if add.length > 0
+                            @edit.replaceSelection(add)
+                            @edit.setCursor(pos.line, pos.ch + add.length)
+                    key.stop()
+                    return true
+
     keys: (args...) =>
         key = args.pop()
+
         if not key.ctrlKey
             return null
         print "meta", key.which
@@ -298,6 +377,7 @@ class Pad
             esc()
             $("#search-box").show()
             $("#search-input").focus()
+            $("#search-input").val(@edit.getSelection())
         else if key.which == COMMANDKEY
             esc()
             $("#command-box").show()

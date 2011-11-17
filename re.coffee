@@ -11,6 +11,8 @@ child_process = require('child_process')
 
 modes =
     '.js': "javascript"
+    '.c': "javascript"
+    '.tree': "scheme"
     '.py': "python"
     '.css': "css"
     '.scss': "css"
@@ -70,16 +72,21 @@ app.get '/suggest', (req, res) ->
             al -= 20 if a in recent_files
             bl -= 20 if b in recent_files
             return al - bl
-        files = files[0..10]
+        files = files[0..30]
         res.send(files.reverse())
 
 app.get '/open', (req, res) ->
     throw "steve!" if res.socket.remoteAddress != "127.0.0.1"
     filename = req.param("path")
     print "load", filename
+    if not filename
+        return
     path.exists filename, (exists) ->
+        ext = filename.match(/\.[^\.]*$/)
+        mode = modes[ext]
         if not exists
             res.send
+                mode: mode
                 error: "file not found"
             return
         fs.readFile filename, "binary", (err, file) ->
@@ -87,12 +94,11 @@ app.get '/open', (req, res) ->
                 res.send
                     error: "reading file"
                 return
-            ext = filename.match(/\.[^\.]*$/)
             if filename not in recent_files
                 recent_files.push(filename)
             opened_files.push(filename)
             res.send
-                mode: modes[ext]
+                mode: mode
                 path: filename
                 text: file
 

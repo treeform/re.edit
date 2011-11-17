@@ -29,7 +29,7 @@ body, textarea {
 
 }
 .searched {
-  background: yellow;
+  background: #6C2C03;
 }
 
 .highlight {
@@ -52,8 +52,8 @@ input {
   bottom: 0px;
   left: 0px;
   right: 0px;
-  color: $text;
-  background: darken($bg, 5%);
+  color: #AAA;
+  background: darken($bg, 10%);
   z-index: 10;
 }
 
