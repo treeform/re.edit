@@ -11,7 +11,7 @@ child_process = require('child_process')
 
 modes =
     '.js': "javascript"
-    '.c': "javascript"
+    '.c': "text/x-csrc"
     '.tree': "scheme"
     '.py': "python"
     '.css': "css"

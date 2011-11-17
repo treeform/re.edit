@@ -5,8 +5,6 @@ warn = print
 ENTER = 13
 UP = 38
 DOWN = 40
-IUP = 73
-IDOWN = 75
 OKEY = 79
 SKEY = 83
 SEARCHKEY = 186
@@ -14,6 +12,9 @@ GOTOKEY = 89
 ESC = 27
 COMMANDKEY = 65
 TAB = 9
+LEFT_WINDOW = 74
+RIGHT_WINDOW = 76
+
 
 current_pad = undefined
 base_dir = "/"
@@ -31,6 +32,12 @@ esc = ->
     current_pad.edit.focus()
 
 keys = (e) ->
+    if e.ctrlKey
+        if e.which == LEFT_WINDOW
+            pads[0].focus()
+        if e.which == RIGHT_WINDOW
+            pads[1].focus()
+
     if e.which == ESC
         esc()
     else
@@ -286,6 +293,9 @@ class Pad
             onFocus: @focused
         pads.push(@)
 
+    focus: ->
+        @edit.focus()
+
     focused: =>
         current_pad = @
 
@@ -359,15 +369,6 @@ class Pad
                 dataType: "json"
                 success: => info "saved", @filename
                 error: => warn "could not save", @filename
-
-        else if key.which == IUP
-            pos = @edit.getCursor()
-            pos.line -= 5
-            @edit.setCursor(pos)
-        else if key.which == IDOWN
-            pos = @edit.getCursor()
-            pos.line += 5
-            @edit.setCursor(pos)
         # open
         else if key.which == OKEY
             esc()
