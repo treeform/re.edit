@@ -38,7 +38,8 @@ input {
   right: 0px;
   color: #AAA;
   background: #070808;
-  z-index: 10; }
+  z-index: 10;
+  border-top: solid 2px #E39F3B; }
 
 #open-box input {
   width: 300px; }

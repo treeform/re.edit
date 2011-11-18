@@ -55,6 +55,7 @@ input {
   color: #AAA;
   background: darken($bg, 10%);
   z-index: 10;
+  border-top: solid 2px #E39F3B;
 }
 
 #open-box {
