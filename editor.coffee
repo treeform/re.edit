@@ -24,7 +24,7 @@ marked = []
 esc = ->
     # remove any selections
     if marked
-        m() for m in marked
+        m.clear() for m in marked
         marked = []
     # remove popups
     $("div.popup").hide()
@@ -32,22 +32,26 @@ esc = ->
     current_pad.edit.focus()
 
 keys = (e) ->
+    ###
     if e.ctrlKey
         if e.which == LEFT_WINDOW
             pads[0].focus()
         if e.which == RIGHT_WINDOW
             pads[1].focus()
-
+    ###
     if e.which == ESC
         esc()
     else
-        current_pad.keys(e)
+        #current_pad.keys(e)
         for pad in pads
             if pad != current_pad and pad.filename == current_pad.filename
                 pad.edit.setValue(current_pad.edit.getValue())
                 # todo copy highlighting too to stop fliker
 
 $(document).keydown(keys).keyup(keys).keypress(keys)
+
+
+
 
 pads = []
 resize = ->
@@ -101,7 +105,7 @@ last_query = null
 $("#search-box").hide()
 $("#search-input").keyup (e) ->
     editor = current_pad.edit
-    m() for m in marked
+    m.clear() for m in marked
     marked = []
 
     $input = $(e.currentTarget)
@@ -112,6 +116,7 @@ $("#search-input").keyup (e) ->
     cursor = editor.getSearchCursor(query)
     while cursor.findNext()
         t = editor.markText(cursor.from(), cursor.to(), "searched")
+        console.log "new mark", t
         marked.push(t)
 
     if e.which == ENTER
@@ -145,7 +150,7 @@ $("#search-input").keyup (e) ->
 $("#replace-input").keyup (e) ->
     print "replace"
     editor = current_pad.edit
-    m() for m in marked
+    m.clear() for m in marked
     marked = []
     $input = $(e.currentTarget)
     text = $("#search-input").val()
@@ -291,6 +296,9 @@ class Pad
             tabMode: "shift"
             matchBrackets: true
             onFocus: @focused
+            theme: "midnight"
+            keyMap: "re_edit"
+        @edit.re_pad = @
         pads.push(@)
 
     focus: ->
@@ -318,6 +326,7 @@ class Pad
                     json.mode = "text" if not json.mode?
                     @edit.setOption("mode", json.mode)
                     @edit.setValue(json.text)
+                    @edit.clearHistory()
                     @edit.setOption("indentUnit", guess_indent(json.text))
                     @edit.setOption("electricChars", false)
                     @edit.setOption("onKeyEvent", @key_hook)
@@ -348,49 +357,61 @@ class Pad
                             @edit.setCursor(pos.line, pos.ch + add.length)
                     key.stop()
                     return true
-
-    keys: (args...) =>
-        key = args.pop()
-
-        if not key.ctrlKey
-            return null
-        print "meta", key.which
-        # save
-        if key.which == SKEY
-            print "save"
-            text = @edit.getValue()
-            # strip trailing spaces
-            text = text.replace(/[ \t\r]*\n/g,"\n")
-            $.ajax "save",
-                type: "POST"
-                data:
-                    path: @filename
-                    text: text
-                dataType: "json"
-                success: => info "saved", @filename
-                error: => warn "could not save", @filename
-        # open
-        else if key.which == OKEY
-            esc()
-            $("#open-box").show()
-            $("#file-input").focus()
-        else if key.which == SEARCHKEY
-            esc()
-            $("#search-box").show()
-            $("#search-input").focus()
-            $("#search-input").val(@edit.getSelection())
-        else if key.which == COMMANDKEY
-            esc()
-            $("#command-box").show()
-            $("#command-input").focus()
-        else if key.which == GOTOKEY
-            esc()
-            $("#goto-box").show()
-            $("#goto-input").focus()
-        key.stopPropagation()
         return false
+
+
 
 for i in [0..1]
     current_pad = new Pad("code")
+
+
+
+open_file = ->
+    esc()
+    $("#open-box").show()
+    $("#file-input").focus()
+
+save_file = (pad) ->
+    print "save"
+    text = pad.edit.getValue()
+    # strip trailing spaces
+    text = text.replace(/[ \t\r]*\n/g,"\n")
+    $.ajax "save",
+        type: "POST"
+        data:
+            path: pad.filename
+            text: text
+        dataType: "json"
+        success: => info "saved", pad.filename
+        error: => warn "could not save", pad.filename
+
+search = (pad) ->
+    esc()
+    $("#search-box").show()
+    $("#search-input").focus()
+    selected_word = pad.edit.getSelection()
+    if selected_word
+        $("#search-input").val(selected_word)
+
+command = ->
+    $("#command-box").show()
+    $("#command-input").focus()
+
+goto = ->
+    esc()
+    $("#goto-box").show()
+    $("#goto-input").focus()
+
+CodeMirror.keyMap.re_edit =
+
+    "Ctrl-L": (cm) -> open_file()
+    "Ctrl-S": (cm) -> save_file(cm.re_pad)
+    "Ctrl-F": (cm) -> search(cm.re_pad)
+    "Ctrl-Y": (cm) -> goto()
+    "Ctrl-A": (cm) -> command()
+
+    "Esc": (cm) -> esc()
+    fallthrough: ["default"]
+
 
 resize()
