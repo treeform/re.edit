@@ -85,7 +85,8 @@ $("#goto-input").keyup (e) ->
         esc()
 
 # some commands here
-cd = (dir) -> base_dir = dir
+window.cd = (dir) -> base_dir = dir
+window.indent = (i) -> current_pad.edit.setOption("indentUnit", i)
 
 $("#command-box").hide()
 $("#command-input").keyup (e) ->
@@ -332,6 +333,7 @@ class Pad
                     @edit.setOption("onKeyEvent", @key_hook)
                     if @filename of saved_pos
                         @edit.setCursor(saved_pos[@filename])
+                    tools(@edit)
             error: (e) -> warn "could not open", @filename, e
 
     key_hook: (e, key) =>
@@ -357,6 +359,8 @@ class Pad
                             @edit.setCursor(pos.line, pos.ch + add.length)
                     key.stop()
                     return true
+
+        quick_tool()
         return false
 
 
@@ -402,6 +406,81 @@ goto = ->
     $("#goto-box").show()
     $("#goto-input").focus()
 
+
+tools_on = true
+last_timeout = false
+quick_tool = ->
+    if last_timeout
+        clearTimeout(last_timeout)
+    last_timeout = setTimeout(tools, 10000)
+
+
+messages = []
+clear_tools = ->
+    for m in messages
+        m.remove()
+    messages = []
+
+tools_key = ->
+    tools_on = not tools_on
+    tools()
+
+tools = (edit) ->
+    clear_tools()
+    return if not tools_on
+    last_timeout = false
+
+    console.log "running tools..."
+    if not edit?
+        edit = current_pad.edit
+    mode = edit.getOption("mode")
+    text = edit.getValue()
+    console.log mode
+    if mode == "coffeescript"
+
+        try
+            CoffeeScript.compile(text)
+        catch e
+            m = e.message.match(/Parse error on line (\d*): (.*)/)
+            if m
+                [full, line, msg] = m
+                console.log line, msg
+                msg = "^ "+msg
+                error = $("<div class='error'><div class='msg'>#{msg}</div></div>")
+                messages.push(error)
+                line = parseInt(line)-1
+                l = edit.getLine(line)
+                console.log l
+                [full, space] = l.match(/(\s*).*$/)
+                error.css("width", l.trim().length*8+"px")
+                edit.addWidget({line:line, ch:space.length}, error[0])
+                return
+
+        # now lint
+        configuration =
+          "indentation":
+              "value": edit.getOption("indentUnit"),
+              "level": "error"
+          "no_implicit_braces":
+              "level": "error"
+          "no_trailing_semicolons":
+              "level": "error"
+          "no_plusplus" :
+              "level": "error"
+          "no_trailing_whitespace":
+              "level": "ignore"
+
+        for hint in coffeelint.lint(text, configuration).reverse()
+            console.log hint, hint.message
+            msg = "^ " + hint.message
+            error = $("<div class='hint'><div class='msg'>#{msg}</div></div>")
+            messages.push(error)
+            l = edit.getLine(hint.lineNumber-1)
+            [full, space] = l.match(/(\s*).*$/)
+            error.css("width", l.trim().length*8+"px")
+            edit.addWidget({line:hint.lineNumber-1, ch: space.length}, error[0])
+
+
 CodeMirror.keyMap.re_edit =
 
     "Ctrl-L": (cm) -> open_file()
@@ -409,6 +488,8 @@ CodeMirror.keyMap.re_edit =
     "Ctrl-F": (cm) -> search(cm.re_pad)
     "Ctrl-Y": (cm) -> goto()
     "Ctrl-A": (cm) -> command()
+
+    "Ctrl-W": (cm) -> tools_key()
 
     "Esc": (cm) -> esc()
     fallthrough: ["default"]

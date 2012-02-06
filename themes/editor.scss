@@ -107,3 +107,24 @@ input {
     width: 350px;
   }
 }
+
+.hint, .error  {
+  position: absolute;
+  height: 1em;
+  border-top: solid 2px #881A12;
+
+  &:hover .msg {
+    background: #881A12;
+    padding: 2px;
+    color: white;
+    display: block;
+    width: 100%;
+    min-width: 300px;
+  }
+
+  .msg {
+    display: none;
+  }
+}
+
+
