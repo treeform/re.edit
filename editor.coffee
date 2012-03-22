@@ -50,9 +50,6 @@ keys = (e) ->
 
 $(document).keydown(keys).keyup(keys).keypress(keys)
 
-
-
-
 pads = []
 resize = ->
     print "resize"
@@ -88,6 +85,37 @@ $("#goto-input").keyup (e) ->
 window.cd = (dir) -> base_dir = dir
 window.indent = (i) -> current_pad.edit.setOption("indentUnit", i)
 
+window.wrap = -> current_pad.edit.setOption("lineWrapping", true)
+window.nowrap = -> current_pad.edit.setOption("lineWrapping", false)
+
+# makes sure the selection accupies full lines
+window.boxsel = ->
+    edit = current_pad.edit
+    if edit.somethingSelected()
+        start = edit.getCursor(true)
+        start.ch = 0
+        end = edit.getCursor(false)
+        end.ch = edit.getLine(end.line).length
+        edit.setSelection(start, end)
+
+# adds a string to each line
+window.place = (c) ->
+    boxsel()
+    sel = current_pad.edit.getSelection()
+    sel = c + sel.split("\n").join("\n" + c)
+    current_pad.edit.replaceSelection(sel)
+
+# removes a string from each line
+window.unplace = (c) ->
+    boxsel()
+    sel = current_pad.edit.getSelection()
+    final = []
+    for line in sel.split("\n")
+        if line.substr(0, c.length) == c
+            line = line.substr(c.length)
+        final.push line
+    current_pad.edit.replaceSelection(final.join("\n"))
+
 $("#command-box").hide()
 $("#command-input").keyup (e) ->
     editor = current_pad.edit
@@ -111,13 +139,12 @@ $("#search-input").keyup (e) ->
 
     $input = $(e.currentTarget)
     query = $input.val()
-    if not query
+    if not query or query.length == 1
         return
     print "looking for", query, current_pad.edit
     cursor = editor.getSearchCursor(query)
     while cursor.findNext()
         t = editor.markText(cursor.from(), cursor.to(), "searched")
-        console.log "new mark", t
         marked.push(t)
 
     if e.which == ENTER
@@ -333,7 +360,7 @@ class Pad
                     @edit.setOption("onKeyEvent", @key_hook)
                     if @filename of saved_pos
                         @edit.setCursor(saved_pos[@filename])
-                    tools(@edit)
+                    #tools(@edit)
             error: (e) -> warn "could not open", @filename, e
 
     key_hook: (e, key) =>
@@ -360,7 +387,7 @@ class Pad
                     key.stop()
                     return true
 
-        quick_tool()
+        #quick_tool()
         return false
 
 
@@ -406,10 +433,11 @@ goto = ->
     $("#goto-box").show()
     $("#goto-input").focus()
 
-
+###
 tools_on = true
 last_timeout = false
 quick_tool = ->
+    return
     if last_timeout
         clearTimeout(last_timeout)
     last_timeout = setTimeout(tools, 10000)
@@ -426,6 +454,7 @@ tools_key = ->
     tools()
 
 tools = (edit) ->
+    return
     clear_tools()
     return if not tools_on
     last_timeout = false
@@ -455,7 +484,7 @@ tools = (edit) ->
                 error.css("width", l.trim().length*8+"px")
                 edit.addWidget({line:line, ch:space.length}, error[0])
                 return
-
+        return
         # now lint
         configuration =
           "indentation":
@@ -479,7 +508,7 @@ tools = (edit) ->
             [full, space] = l.match(/(\s*).*$/)
             error.css("width", l.trim().length*8+"px")
             edit.addWidget({line:hint.lineNumber-1, ch: space.length}, error[0])
-
+###
 
 CodeMirror.keyMap.re_edit =
 
@@ -489,7 +518,7 @@ CodeMirror.keyMap.re_edit =
     "Ctrl-Y": (cm) -> goto()
     "Ctrl-A": (cm) -> command()
 
-    "Ctrl-W": (cm) -> tools_key()
+    #"Ctrl-W": (cm) -> tools_key()
 
     "Esc": (cm) -> esc()
     fallthrough: ["default"]
