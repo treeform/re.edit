@@ -37,6 +37,8 @@ body, textarea {
   line-height: 1em;
   font-family: monospace;
   font-weight: 700;
+  overflow: hidden;
+  background: black;
 
   ::-webkit-scrollbar {
     background: transparent;
@@ -60,9 +62,15 @@ body, textarea {
   background: yellow;
 }
 
+
+.local {
+  color: #8EBECA;
+}
+
 .highlight {
   color: $highlight;
 }
+
 
 input {
   background: lighten($bg,5%);

@@ -9,6 +9,9 @@ events = require('events')
 path = require('path')
 child_process = require('child_process')
 
+settings =
+    base_dir: "/"
+
 modes =
     '.js': "javascript"
     '.c': "text/x-csrc"
@@ -40,6 +43,11 @@ findem = (dir, s) ->
 recent_files = []
 opened_files = []
 
+
+auth = (res) ->
+    if res.socket.remoteAddress != "127.0.0.1"
+        throw "steve!"
+
 app = express.createServer()
 
 app.configure ->
@@ -54,12 +62,12 @@ app.configure 'development', ->
         showStack: true
 
 app.get '/exit', (req, res) ->
-    throw "steve!" if res.socket.remoteAddress != "127.0.0.1"
+    auth(res)
     print "exit"
     #node.exit(0)
 
 app.get '/suggest', (req, res) ->
-    throw "steve!" if res.socket.remoteAddress != "127.0.0.1"
+    auth(res)
     s = req.param("s")
     dir = req.param("dir")
     print "s", s, "dir", dir
@@ -76,7 +84,7 @@ app.get '/suggest', (req, res) ->
         res.send(files.reverse())
 
 app.get '/open', (req, res) ->
-    throw "steve!" if res.socket.remoteAddress != "127.0.0.1"
+    auth(res)
     filename = req.param("path")
     print "load", filename
     if not filename
@@ -103,12 +111,11 @@ app.get '/open', (req, res) ->
                 text: file
 
 app.get '/start', (req, res) ->
-    throw "steve!" if res.socket.remoteAddress != "127.0.0.1"
-    res.send
-        "opened_files": opened_files
+    auth(res)
+    res.send(settings)
 
 app.post '/save', (req, res) ->
-    throw "steve!" if res.socket.remoteAddress != "127.0.0.1"
+    auth(res)
     filename = req.param("path")
     print "save", filename
     text = req.body.text
@@ -116,6 +123,19 @@ app.post '/save', (req, res) ->
         if err
             throw err
     res.send({"done":text})
+
+app.post '/settings', (req, res) ->
+    auth(res)
+    set = req.param("set")
+    for name of set
+        settings[name] = set[name]
+    res.send("ok")
+    print "set", set
+    print " ->", settings
+
+
+
+
 
 ###
 opts =

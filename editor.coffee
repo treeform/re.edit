@@ -21,6 +21,12 @@ base_dir = "/"
 saved_pos = {}
 marked = []
 
+
+Array::remove = (elem) ->
+  for i in [0...@length]
+      if @[i] == elem
+          @splice(i,1);
+
 esc = ->
     # remove any selections
     if marked
@@ -42,6 +48,7 @@ keys = (e) ->
     if e.which == ESC
         esc()
     else
+        return
         #current_pad.keys(e)
         for pad in pads
             if pad != current_pad and pad.filename == current_pad.filename
@@ -56,17 +63,27 @@ resize = ->
     $win = $(window)
     width = $win.width()
     height = $win.height()
-    w = Math.floor(width/pads.length)
 
+    n = pads.length
+    columns = 2
+    if n > columns
+        n = columns
+    w = Math.floor(width/n)
+    current_pad ?= pads[0]
     for pad, i in pads
-        print i,pad
+        if pad == current_pad
+            offset = i
+    if pads.length >= columns and offset > pads.length - columns
+        offset = pads.length - columns
+    print "offset is", offset
+    for pad, i in pads
         $html = $(pad.edit.getScrollerElement())
         $html.css
             position: "absolute"
             top: 0
-            left: i*w
-            width: w
             height: height
+            left: (i-offset)*w
+            width: w
         pad.edit.refresh()
 
 $(window).resize(resize)
@@ -81,10 +98,32 @@ $("#goto-input").keyup (e) ->
     if e.which == ENTER
         esc()
 
-# some commands here
-window.cd = (dir) -> base_dir = dir
-window.indent = (i) -> current_pad.edit.setOption("indentUnit", i)
+set_settings = (settings) ->
+    $.ajax "/settings",
+        type: "POST"
+        dataType: "text"
+        data:
+            set: settings
+        error: (e) -> warn "error setting settings", e
+        success: (s) -> return
 
+set_pads = ->
+    c = 0
+    for pad, i in pads
+        if pad == current_pad
+            c = i
+    set_settings
+        "pads": ({"filename":pad.filename} for pad in pads)
+        "current_pad": c
+
+# some commands here
+window.cd = (dir) ->
+    base_dir = dir
+    set_settings
+        "base_dir": base_dir
+    esc()
+
+window.indent = (i) -> current_pad.edit.setOption("indentUnit", i)
 window.wrap = -> current_pad.edit.setOption("lineWrapping", true)
 window.nowrap = -> current_pad.edit.setOption("lineWrapping", false)
 
@@ -224,8 +263,25 @@ $("#file-input").keyup (e) ->
         $input.parent().hide()
         current_pad.edit.focus()
     else if e.which == ENTER
-        current_pad.open_file($input.val())
-        current_pad.edit.focus()
+
+        input = $input.val()
+        if input[0...5] == "open "
+            input = input[5...]
+            old_current = current_pad
+            current_pad = new Pad()
+            current_pad.open_file(input)
+            current_pad.focus()
+            current_pad.move(old_current)
+
+        else if input[0...5] == "goto "
+            input = input[5...]
+            for pad in pads
+                if pad.filename == input
+                    current_pad = pad
+                    current_pad.focus()
+                    break
+        resize()
+
         $input.val("")
         esc()
     else if e.which == UP or e.which == DOWN
@@ -255,19 +311,37 @@ $("#file-input").keyup (e) ->
                 $sug.children().remove()
                 for f in files
                     f = f.replace(s,"<b>#{s}</b>")
-                    $sug.append("<div class='sug'>#{f}<div>")
+                    $sug.append("<div class='sug'>open #{f}<div>")
+
+                 for pad in pads
+                    f = pad.filename
+                    m = f.match("(.*)/([^/]*$)")
+                    i = m[2].indexOf(s)
+                    print "local", m, s, i
+                    if i != -1
+                        f = f.replace(s,"<b>#{s}</b>")
+                        $sug.append("<div class='sug local'>goto #{f}<div>")
+
+
                 #$sug.children().last().addClass("highlight")
 
 $.ajax "/start",
     dataType: "json"
     error: (e) -> warn "error getting start data", e
-    success: (data) ->
-        opened_files = data.opened_files
-        i = opened_files.length - 1
-        for pad in pads
-            pad.open_file(opened_files[i])
-            i -= 1
+    success: (settings) ->
+        print "settings", settings
+        base_dir = settings.base_dir ? "/"
+        if settings.pads
+            for spad in settings.pads
+                pad = new Pad()
+                pad.open_file(spad.filename)
+        else
+            new Pad()
 
+        current_pad = pads[settings.current_pad]
+        current_pad ?= pads[0]
+        current_pad.focus()
+        resize()
 
 common_str = (strs) ->
     return "" if strs.length == 0
@@ -310,6 +384,11 @@ guess_indent = (text) ->
     #print "indents", indents, indent
     return indent
 
+pad_index = (pad) ->
+    for pad, i in pads
+        if pad == pad
+            return i
+
 class Pad
     # global vars?
     filename: ""
@@ -334,6 +413,15 @@ class Pad
 
     focused: =>
         current_pad = @
+
+    move: (to_pad) ->
+        # moving this pad right of pad
+        pads.remove @
+        c = pad_index(to_pad)
+        if c
+            pads.splice(c,0,@)
+        else
+            pads.push @
 
     open_file: (file_name) =>
         $.ajax "open"
@@ -360,6 +448,8 @@ class Pad
                     @edit.setOption("onKeyEvent", @key_hook)
                     if @filename of saved_pos
                         @edit.setCursor(saved_pos[@filename])
+                    set_pads()
+                    resize()
                     #tools(@edit)
             error: (e) -> warn "could not open", @filename, e
 
@@ -389,13 +479,6 @@ class Pad
 
         #quick_tool()
         return false
-
-
-
-for i in [0..1]
-    current_pad = new Pad("code")
-
-
 
 open_file = ->
     esc()
@@ -432,6 +515,49 @@ goto = ->
     esc()
     $("#goto-box").show()
     $("#goto-input").focus()
+
+
+terminal = ->
+    # changes current pain to a terminal
+    esc()
+
+prev_pad = ->
+    prev = false
+    for pad in pads
+        if current_pad == pad and prev
+            current_pad = prev
+            current_pad.focus()
+            resize()
+            set_pads()
+            return true
+        prev = pad
+    return false
+
+next_pad = ->
+    next = false
+    for pad in pads
+        if next == true
+            current_pad = pad
+            current_pad.focus()
+            resize()
+            set_pads()
+            return true
+        if current_pad == pad
+            next = true
+    return false
+
+close_pad = ->
+    print "close pad", current_pad
+    if pads.length <= 1
+        return
+    x_pad = current_pad
+    x_pad.edit.toTextArea()
+    x_pad.textarea.remove()
+    prev_pad() or next_pad()
+    pads.remove(x_pad)
+    print "pads", pads
+    resize()
+    set_pads()
 
 ###
 tools_on = true
@@ -510,6 +636,8 @@ tools = (edit) ->
             edit.addWidget({line:hint.lineNumber-1, ch: space.length}, error[0])
 ###
 
+
+
 CodeMirror.keyMap.re_edit =
 
     "Ctrl-L": (cm) -> open_file()
@@ -517,6 +645,17 @@ CodeMirror.keyMap.re_edit =
     "Ctrl-F": (cm) -> search(cm.re_pad)
     "Ctrl-Y": (cm) -> goto()
     "Ctrl-A": (cm) -> command()
+
+    "Ctrl-T": (cm) -> terminal()
+
+    "Ctrl-[": (cm) -> prev_pad()
+    "Ctrl-]": (cm) -> next_pad()
+
+    "Ctrl-{": (cm) -> console.log "expand"
+    "Ctrl-}": (cm) -> console.log "shrink"
+
+    "Ctrl-N": (cm) -> close_pad()
+
 
     #"Ctrl-W": (cm) -> tools_key()
 

@@ -67,7 +67,9 @@ body, textarea {
   margin: 0px;
   line-height: 1em;
   font-family: monospace;
-  font-weight: 700; }
+  font-weight: 700;
+  overflow: hidden;
+  background: black; }
   body ::-webkit-scrollbar, textarea ::-webkit-scrollbar {
     background: transparent;
     border: 1px solid lighen(#1e2224, 10%);
@@ -82,6 +84,9 @@ body, textarea {
 
 .searched {
   background: yellow; }
+
+.local {
+  color: #8EBECA; }
 
 .highlight {
   color: #fcaf3e; }
