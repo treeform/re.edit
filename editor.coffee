@@ -50,10 +50,6 @@ keys = (e) ->
     else
         return
         #current_pad.keys(e)
-        for pad in pads
-            if pad != current_pad and pad.filename == current_pad.filename
-                pad.edit.setValue(current_pad.edit.getValue())
-                # todo copy highlighting too to stop fliker
 
 $(document).keydown(keys).keyup(keys).keypress(keys)
 
@@ -301,29 +297,33 @@ $("#file-input").keyup (e) ->
         $input.val(chosen.text())
     else
         print "do suggestions"
-        $.ajax "/suggest",
-            dataType: "json"
-            data:
-                "s": s
-                "dir": dir
-            error: (e) -> warn "error", e
-            success: (files) ->
-                $sug.children().remove()
-                for f in files
+        suggest = (files) ->
+            $sug.children().remove()
+            for f in files
+                f = f.replace(s,"<b>#{s}</b>")
+                $sug.append("<div class='sug'>open #{f}<div>")
+
+             for pad in pads
+                f = pad.filename
+                m = f.match("(.*)/([^/]*$)")
+                i = m[2].indexOf(s)
+                print "local", m, s, i
+                if i != -1
                     f = f.replace(s,"<b>#{s}</b>")
-                    $sug.append("<div class='sug'>open #{f}<div>")
-
-                 for pad in pads
-                    f = pad.filename
-                    m = f.match("(.*)/([^/]*$)")
-                    i = m[2].indexOf(s)
-                    print "local", m, s, i
-                    if i != -1
-                        f = f.replace(s,"<b>#{s}</b>")
-                        $sug.append("<div class='sug local'>goto #{f}<div>")
+                    $sug.append("<div class='sug local'>goto #{f}<div>")
 
 
-                #$sug.children().last().addClass("highlight")
+            #$sug.children().last().addClass("highlight")
+        if s != ""
+            $.ajax "/suggest",
+                dataType: "json"
+                data:
+                    "s": s
+                    "dir": dir
+                error: (e) -> warn "error", e
+                success: suggest
+        else
+            suggest([])
 
 $.ajax "/start",
     dataType: "json"
@@ -405,6 +405,7 @@ class Pad
             onFocus: @focused
             theme: "midnight"
             keyMap: "re_edit"
+            onChange: @update_clones
         @edit.re_pad = @
         pads.push(@)
 
@@ -422,6 +423,20 @@ class Pad
             pads.splice(c,0,@)
         else
             pads.push @
+
+    update_clones: =>
+        if current_pad != @
+            return
+        for pad in pads
+            if pad != current_pad and pad.filename == current_pad.filename
+                c = pad.edit.getCursor()
+                $elem = $(pad.edit.getScrollerElement())
+                #top = $elem.css("top")
+                pad.edit.setValue(current_pad.edit.getValue())
+                pad.edit.setCursor(c)
+                #$elem.css("top", top)
+
+
 
     open_file: (file_name) =>
         $.ajax "open"
