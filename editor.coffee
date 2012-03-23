@@ -61,25 +61,27 @@ resize = ->
     height = $win.height()
 
     n = pads.length
-    columns = 2
+    columns = Math.ceil(width / 800)
     if n > columns
         n = columns
-    w = Math.floor(width/n)
+    w = Math.round(width/n)
+
     current_pad ?= pads[0]
     for pad, i in pads
         if pad == current_pad
             offset = i
     if pads.length >= columns and offset > pads.length - columns
         offset = pads.length - columns
-    print "offset is", offset
+    print "offset is", offset, columns, w, n, width
     for pad, i in pads
         $html = $(pad.edit.getScrollerElement())
         $html.css
             position: "absolute"
             top: 0
             height: height
-            left: (i-offset)*w
+            left: Math.round(i-offset)*w
             width: w
+        print $html.css("left")
         pad.edit.refresh()
 
 $(window).resize(resize)
