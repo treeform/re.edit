@@ -2,25 +2,21 @@ print = (args...) -> console.log(args...)
 info = print
 warn = print
 
-ENTER = 13
-UP = 38
-DOWN = 40
 OKEY = 79
 SKEY = 83
 SEARCHKEY = 186
 GOTOKEY = 89
-ESC = 27
 COMMANDKEY = 65
 TAB = 9
-LEFT_WINDOW = 74
-RIGHT_WINDOW = 76
-
+ESC = 27
+ENTER = 13
+UP = 38
+DOWN = 40
 
 current_pad = undefined
 base_dir = "/"
 saved_pos = {}
 marked = []
-
 
 Array::remove = (elem) ->
   for i in [0...@length]
@@ -35,23 +31,41 @@ esc = ->
     # remove popups
     $("div.popup").hide()
     # focus on the editor
-    current_pad.edit.focus()
+    current_pad.focus()
 
+
+# key handler
+key_map =
+    13: 'enter'
+    38: 'up'
+    40: 'down'
+    27: 'esc'
+    9: 'tab'
+    219: '['
+    221: ']'
+
+key_string = (which) ->
+    c = key_map[which]
+    if not c?
+        c = String.fromCharCode(which).toLowerCase()
+    return c
+stroke_map = {}
 keys = (e) ->
-    ###
+    key_stroke = []
     if e.ctrlKey
-        if e.which == LEFT_WINDOW
-            pads[0].focus()
-        if e.which == RIGHT_WINDOW
-            pads[1].focus()
-    ###
-    if e.which == ESC
-        esc()
-    else
-        return
-        #current_pad.keys(e)
+        key_stroke.push("ctr")
+    c = key_string(e.which)
+    if c?
+        key_stroke.push(c)
+    key_stroke = key_stroke.join("-")
+    print key_stroke
+    fn = stroke_map[key_stroke]
+    if fn?
+        fn()
+$(document).keydown(keys)
+key = (str, fn) ->
+    stroke_map[str] = fn
 
-$(document).keydown(keys).keyup(keys).keypress(keys)
 
 pads = []
 resize = ->
@@ -74,15 +88,15 @@ resize = ->
         offset = pads.length - columns
     print "offset is", offset, columns, w, n, width
     for pad, i in pads
-        $html = $(pad.edit.getScrollerElement())
+        $html = $(pad.container())
         $html.css
             position: "absolute"
             top: 0
             height: height
             left: Math.round(i-offset)*w
             width: w
-        print $html.css("left")
-        pad.edit.refresh()
+        print "container", $html
+        pad.refresh()
 
 $(window).resize(resize)
 
@@ -260,6 +274,7 @@ $("#file-input").keyup (e) ->
         $input.val("")
         $input.parent().hide()
         current_pad.edit.focus()
+
     else if e.which == ENTER
 
         input = $input.val()
@@ -406,9 +421,11 @@ class Pad
             matchBrackets: true
             onFocus: @focused
             theme: "midnight"
-            keyMap: "re_edit"
+            #keyMap: "re_edit"
             onChange: @update_clones
         @edit.re_pad = @
+        @edit.setOption("electricChars", false)
+        @edit.setOption("onKeyEvent", @key_hook)
         pads.push(@)
 
     focus: ->
@@ -416,6 +433,12 @@ class Pad
 
     focused: =>
         current_pad = @
+
+    container: ->
+        @edit.getScrollerElement()
+
+    refresh: ->
+        @edit.refresh()
 
     move: (to_pad) ->
         # moving this pad right of pad
@@ -461,8 +484,6 @@ class Pad
                     @edit.setValue(json.text)
                     @edit.clearHistory()
                     @edit.setOption("indentUnit", guess_indent(json.text))
-                    @edit.setOption("electricChars", false)
-                    @edit.setOption("onKeyEvent", @key_hook)
                     if @filename of saved_pos
                         @edit.setCursor(saved_pos[@filename])
                     set_pads()
@@ -493,9 +514,53 @@ class Pad
                             @edit.setCursor(pos.line, pos.ch + add.length)
                     key.stop()
                     return true
-
         #quick_tool()
         return false
+
+
+class Terminal
+
+    constructor: ->
+        @$holder = $("<div class='terminal'></div>")
+        @$input = $("<input class='cmdline'></input>")
+        @$input.keyup (e) => @onkey(e)
+
+        @$holder.append(@$input)
+        $("body").append(@$holder)
+        pads.push(@)
+
+
+    onkey: (e) ->
+        if e.which == ENTER
+            cmd = @$input.val()
+            @$input.val("")
+            print cmd
+            $.ajax "/cmd",
+                type: "POST"
+                data:
+                    "cmd": cmd
+                dataType: "json"
+                success: (data) =>
+                    info "text", data.text
+                    @$input.before("<pre class='out'>#{data.text}</pre>")
+                    @$holder.scrollTop(@$holder[0].scrollHeight);
+
+                error: => warn "could run command", cmd
+
+
+    container: ->
+        @$holder[0]
+
+    focus: ->
+        print "focused"
+        @$input.focus()
+
+    refresh: ->
+        print "refresh"
+
+
+
+
 
 open_file = ->
     esc()
@@ -537,6 +602,10 @@ goto = ->
 terminal = ->
     # changes current pain to a terminal
     esc()
+    pad = new Terminal()
+    current_pad = pad
+    current_pad.focus()
+    resize()
 
 prev_pad = ->
     prev = false
@@ -654,30 +723,16 @@ tools = (edit) ->
 ###
 
 
-
-CodeMirror.keyMap.re_edit =
-
-    "Ctrl-L": (cm) -> open_file()
-    "Ctrl-S": (cm) -> save_file(cm.re_pad)
-    "Ctrl-F": (cm) -> search(cm.re_pad)
-    "Ctrl-Y": (cm) -> goto()
-    "Ctrl-A": (cm) -> command()
-
-    "Ctrl-T": (cm) -> terminal()
-
-    "Ctrl-[": (cm) -> prev_pad()
-    "Ctrl-]": (cm) -> next_pad()
-
-    "Ctrl-{": (cm) -> console.log "expand"
-    "Ctrl-}": (cm) -> console.log "shrink"
-
-    "Ctrl-N": (cm) -> close_pad()
-
-
-    #"Ctrl-W": (cm) -> tools_key()
-
-    "Esc": (cm) -> esc()
-    fallthrough: ["default"]
-
-
 resize()
+
+
+key "ctr-l", -> open_file()
+key "ctr-s", -> save_file(current_pad)
+key "ctr-f", -> search(current_pad)
+key "ctr-y", -> goto()
+key "ctr-a", -> command()
+key "ctr-t", -> terminal()
+key "ctr-[", -> prev_pad()
+key "ctr-]", -> next_pad()
+key "ctr-n", -> close_pad()
+key "esc", -> esc()

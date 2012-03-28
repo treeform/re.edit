@@ -136,3 +136,17 @@ input {
     min-width: 300px; }
   .hint .msg, .error .msg {
     display: none; }
+
+.terminal {
+  position: absolute;
+  background: #311;
+  width: 100px;
+  height: 100px;
+  overflow: scroll; }
+
+.cmdline {
+  width: 100%; }
+
+.out {
+  font-family: monospace;
+  color: #babdb6; }

@@ -40,6 +40,17 @@ findem = (dir, s) ->
         ev.emit("end", files)
     return ev
 
+run_command = (cmd) ->
+    ev = new events.EventEmitter
+    process = child_process.exec(cmd)
+    lines = []
+    process.data = ""
+    process.stdout.on "data", (data) ->
+        process.data += data
+    process.on "exit", ->
+        ev.emit("end", process.data)
+    return ev
+
 recent_files = []
 opened_files = []
 
@@ -109,6 +120,16 @@ app.get '/open', (req, res) ->
                 mode: mode
                 path: filename
                 text: file
+
+
+app.post '/cmd', (req, res) ->
+    auth(res)
+    cmd = req.param("cmd")
+    p = run_command(cmd)
+    print ">", cmd
+    p.on 'end', (lines) ->
+        print lines
+        res.send({text: lines})
 
 app.get '/start', (req, res) ->
     auth(res)
