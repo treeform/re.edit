@@ -423,9 +423,16 @@ class Pad
             theme: "midnight"
             #keyMap: "re_edit"
             onChange: @update_clones
+            onCursorActivity: @update_line
+
         @edit.re_pad = @
         @edit.setOption("electricChars", false)
         @edit.setOption("onKeyEvent", @key_hook)
+
+
+        @current_line = @edit.setLineClass(0, "activeline");
+
+
         pads.push(@)
 
     focus: ->
@@ -461,7 +468,10 @@ class Pad
                 pad.edit.setCursor(c)
                 #$elem.css("top", top)
 
-
+    update_line: =>
+        @edit.setLineClass(@current_line, null, null);
+        @current_line = @edit.setLineClass(
+             @edit.getCursor().line, null, "activeline");
 
     open_file: (file_name) =>
         $.ajax "open"
@@ -737,3 +747,4 @@ key "ctr-[", -> prev_pad()
 key "ctr-]", -> next_pad()
 key "ctr-n", -> close_pad()
 key "esc", -> esc()
+
