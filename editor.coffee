@@ -535,13 +535,18 @@ class Terminal
             cmd = @$input.val()
             @$input.val("")
             print cmd
+            @$input.before("<pre class='in'>#{cmd}</pre>")
+
             $.ajax "/cmd",
                 type: "POST"
                 data:
                     "cmd": cmd
                 dataType: "json"
                 success: (data) =>
-                    info "text", data.text
+                    info "text", data.text, data.code
+
+                    if data.code != 0
+                        @$input.before("<pre class='error-code out'>Error code: #{data.code}</pre>")
                     @$input.before("<pre class='out'>#{data.text}</pre>")
                     @$holder.scrollTop(@$holder[0].scrollHeight);
 
@@ -558,10 +563,6 @@ class Terminal
     refresh: ->
         print "refresh"
 
-
-
-
-
 open_file = ->
     esc()
     $("#open-box").show()
@@ -571,7 +572,7 @@ save_file = (pad) ->
     print "save"
     text = pad.edit.getValue()
     # strip trailing spaces
-    text = text.replace(/[ \t\r]*\n/g,"\n")
+    text = text.replace(/[ \t\r]*\n/g,"\n").replace(/\s*$/g, "\n")
     $.ajax "save",
         type: "POST"
         data:

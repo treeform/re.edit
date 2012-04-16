@@ -42,13 +42,19 @@ findem = (dir, s) ->
 
 run_command = (cmd) ->
     ev = new events.EventEmitter
-    process = child_process.exec(cmd)
+    op =
+        maxBuffer: 1
+    process = child_process.exec(cmd, op)
+    print process.pid
     lines = []
     process.data = ""
+    print process.stdout
     process.stdout.on "data", (data) ->
+        print "next chunk"
         process.data += data
-    process.on "exit", ->
-        ev.emit("end", process.data)
+    process.on "exit", (code) ->
+        process.code = code
+        ev.emit("end", process)
     return ev
 
 recent_files = []
@@ -127,9 +133,11 @@ app.post '/cmd', (req, res) ->
     cmd = req.param("cmd")
     p = run_command(cmd)
     print ">", cmd
-    p.on 'end', (lines) ->
-        print lines
-        res.send({text: lines})
+    p.on 'end', (p) ->
+        print "exist code", p.code
+        res.send
+            text: p.data
+            code: p.code
 
 app.get '/start', (req, res) ->
     auth(res)

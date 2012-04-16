@@ -147,9 +147,19 @@ input {
   width: 100%;
 }
 
+.in {
+  font-family: monospace;
+  color: $text;
+  background-color: $bg;
+}
+
 .out {
   font-family: monospace;
   color: $text;
+}
+
+.error-code {
+  color: red;
 }
 
 
