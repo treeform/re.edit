@@ -147,6 +147,14 @@ input {
 .cmdline {
   width: 100%; }
 
+.in {
+  font-family: monospace;
+  color: #babdb6;
+  background-color: #1e2224; }
+
 .out {
   font-family: monospace;
   color: #babdb6; }
+
+.error-code {
+  color: red; }

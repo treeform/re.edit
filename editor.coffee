@@ -423,14 +423,14 @@ class Pad
             theme: "midnight"
             #keyMap: "re_edit"
             onChange: @update_clones
-            onCursorActivity: @update_line
+            #onCursorActivity: @update_line
 
         @edit.re_pad = @
         @edit.setOption("electricChars", false)
         @edit.setOption("onKeyEvent", @key_hook)
 
 
-        @current_line = @edit.setLineClass(0, "activeline");
+        #@current_line = @edit.setLineClass(0, "activeline");
 
 
         pads.push(@)
@@ -469,15 +469,17 @@ class Pad
                 #$elem.css("top", top)
 
     update_line: =>
-        @edit.setLineClass(@current_line, null, null);
+        @edit.setLineClass(@current_line, null, null)
         @current_line = @edit.setLineClass(
-             @edit.getCursor().line, null, "activeline");
+             @edit.getCursor().line, null, "activeline")
+        print @current_line
 
     open_file: (file_name) =>
         $.ajax "open"
             dataType: "json"
             data:
                 path: file_name
+                r: Math.random()
             success: (json) =>
                 saved_pos[@filename] = @edit.getCursor()
                 @filename = file_name
