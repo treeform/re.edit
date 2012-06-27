@@ -36,7 +36,7 @@ body, textarea {
   margin:0px;
   line-height: 1em;
   font-family: monospace;
-  font-weight: 700;
+  font-weight: bold;
   overflow: hidden;
   background: black;
 
@@ -78,7 +78,7 @@ input {
   color: $text;
   line-height: 14px;
   font-family: monospace;
-  font-weight: 700;
+  font-weight: bold;
   font-size: 14px;
   padding:0px;
   margin:0px;
@@ -161,5 +161,4 @@ input {
 .error-code {
   color: red;
 }
-
 

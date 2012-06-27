@@ -1,3 +1,5 @@
+window.onbeforeunload = -> "Dont go! Press cancel."
+
 print = (args...) -> console.log(args...)
 info = print
 warn = print
