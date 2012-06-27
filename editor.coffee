@@ -438,15 +438,18 @@ class Pad
         pads.push(@)
 
     focus: ->
+        @update_url()
         @edit.focus()
 
     focused: =>
+        @update_url()
         current_pad = @
 
     container: ->
         @edit.getScrollerElement()
 
     refresh: ->
+        @update_url()
         @edit.refresh()
 
     move: (to_pad) ->
@@ -457,6 +460,12 @@ class Pad
             pads.splice(c,0,@)
         else
             pads.push @
+
+    update_url: =>
+        path = @filename
+        if path[0..base_dir.length] == base_dir
+            path = path[base_dir.length..]
+        document.title = path
 
     update_clones: =>
         if current_pad != @
