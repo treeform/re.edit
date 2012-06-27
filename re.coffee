@@ -62,8 +62,8 @@ opened_files = []
 
 
 auth = (res) ->
-    if res.socket.remoteAddress != "127.0.0.1"
-        throw "steve!"
+    #if res.socket.remoteAddress != "127.0.0.1"
+    #    throw "steve!"
 
 app = express.createServer()
 

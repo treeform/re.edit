@@ -62,6 +62,11 @@ keys = (e) ->
     fn = stroke_map[key_stroke]
     if fn?
         fn()
+        # kill this event
+        e.preventDefault()
+        e.stopPropagation()
+        return false
+    
 $(document).keydown(keys)
 key = (str, fn) ->
     stroke_map[str] = fn
@@ -84,15 +89,7 @@ resize = ->
 
 $(window).resize(resize)
 
-$("#goto-box").hide()
-$("#goto-input").keyup (e) ->
-    editor = current_pad.edit
-    $input = $(e.currentTarget)
-    line = parseInt($input.val())
-    if line > 0
-        editor.setCursor(line)
-    if e.which == ENTER
-        esc()
+
 
 set_settings = (settings) ->
     $.ajax "/settings",
@@ -113,6 +110,9 @@ window.cd = (dir) ->
 window.indent = (i) -> current_pad.edit.setOption("indentUnit", i)
 window.wrap = -> current_pad.edit.setOption("lineWrapping", true)
 window.nowrap = -> current_pad.edit.setOption("lineWrapping", false)
+
+window.font = ->
+    
 
 # makes sure the selection accupies full lines
 window.boxsel = ->
@@ -145,7 +145,16 @@ window.unplace = (c) ->
 
 window.onpopstate = (event) ->
     load_from_url()
-
+    
+$("#goto-box").hide()
+$("#goto-input").keyup (e) ->
+    editor = current_pad.edit
+    $input = $(e.currentTarget)
+    line = parseInt($input.val())
+    if line > 0
+        editor.setCursor(line)
+    if e.which == ENTER
+        esc()
 
 $("#command-box").hide()
 $("#command-input").keyup (e) ->
@@ -354,6 +363,10 @@ pad_index = (pad) ->
         if pad == pad
             return i
 
+window.onbeforeunload = ->
+    current_pad.save_position()
+
+
 class Pad
     # global vars?
     filename: ""
@@ -440,6 +453,7 @@ class Pad
         print @current_line
 
     open_file: (file_name) =>
+        @save_pos()
         $.ajax "/open"
             dataType: "json"
             data:
@@ -469,14 +483,14 @@ class Pad
                     @edit.refresh()
                     print "settings", settings, @filename
                     if settings.files and
-                       settings.files[@filename] and
-                       settings.files[@filename].cursor
+                       settings.files[@filename]
                         cursor = settings.files[@filename].cursor
-
-                        print "set cursor", cursor.line, cursor.ch
-                        @edit.setCursor(cursor.line, cursor.ch)
-
-
+                        scroll = settings.files[@filename].scroll                        
+                        if cursor
+                            @edit.setCursor(cursor.line, cursor.ch)
+                        if scroll                           
+                            @edit.scrollTo(0, scroll)
+    
                     #tools(@edit)
             error: (e) -> warn "could not open", @filename, e
 
@@ -508,9 +522,13 @@ class Pad
 
     scrolled: (e) =>
         #print @edit
-        #print @edit.getScrollInfo()
+        print @edit.getScrollInfo()
 
     moved: (e) =>
+        #print @edit.getScrollInfo()
+        
+        
+    save_pos: (e) =>
 
         if not settings.files?
             settings.files = {}
@@ -518,6 +536,8 @@ class Pad
             settings.files[@filename] = {}
 
         settings.files[@filename].cursor = @edit.getCursor()
+        settings.files[@filename].scroll = @edit.getScrollInfo().y
+
 
         $.ajax "/settings_files"
             dataType: "json"
@@ -528,6 +548,11 @@ class Pad
                 r: Math.random()
 
 
+goto_line = ->
+    esc()
+    $("#goto-box").show()
+    $("#goto-input").focus()
+    
 open_file = ->
     esc()
     $("#open-box").show()
@@ -567,5 +592,6 @@ key "ctr-l", -> open_file()
 key "ctr-s", -> save_file(current_pad)
 key "ctr-f", -> search(current_pad)
 key "ctr-a", -> command()
+key "ctr-y", -> goto_line()
 key "esc", -> esc()
 
