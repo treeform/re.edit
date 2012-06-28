@@ -1,5 +1,3 @@
-window.onbeforeunload = -> "Dont go! Press cancel."
-
 print = (args...) -> console.log(args...)
 info = print
 warn = print
@@ -19,6 +17,7 @@ current_pad = undefined
 base_dir = "/"
 saved_pos = {}
 marked = []
+settings = null
 
 Array::remove = (elem) ->
   for i in [0...@length]
@@ -60,7 +59,6 @@ keys = (e) ->
     if c?
         key_stroke.push(c)
     key_stroke = key_stroke.join("-")
-    print key_stroke
     fn = stroke_map[key_stroke]
     if fn?
         fn()
@@ -71,34 +69,18 @@ key = (str, fn) ->
 
 pads = []
 resize = ->
-    print "resize"
     $win = $(window)
     width = $win.width()
     height = $win.height()
-
-    n = pads.length
-    columns = Math.ceil(width / 800)
-    if n > columns
-        n = columns
-    w = Math.round(width/n)
-
-    current_pad ?= pads[0]
-    for pad, i in pads
-        if pad == current_pad
-            offset = i
-    if pads.length >= columns and offset > pads.length - columns
-        offset = pads.length - columns
-    print "offset is", offset, columns, w, n, width
-    for pad, i in pads
-        $html = $(pad.container())
+    if current_pad?
+        $html = $(current_pad.container())
         $html.css
             position: "absolute"
             top: 0
             height: height
-            left: Math.round(i-offset)*w
-            width: w
-        print "container", $html
-        pad.refresh()
+            left: 0
+            width: width
+        current_pad.refresh()
 
 $(window).resize(resize)
 
@@ -120,15 +102,6 @@ set_settings = (settings) ->
             set: settings
         error: (e) -> warn "error setting settings", e
         success: (s) -> return
-
-set_pads = ->
-    c = 0
-    for pad, i in pads
-        if pad == current_pad
-            c = i
-    set_settings
-        "pads": ({"filename":pad.filename} for pad in pads)
-        "current_pad": c
 
 # some commands here
 window.cd = (dir) ->
@@ -169,6 +142,11 @@ window.unplace = (c) ->
         final.push line
     current_pad.edit.replaceSelection(final.join("\n"))
 
+
+window.onpopstate = (event) ->
+    load_from_url()
+
+
 $("#command-box").hide()
 $("#command-input").keyup (e) ->
     editor = current_pad.edit
@@ -178,7 +156,6 @@ $("#command-input").keyup (e) ->
         if not query
             return
         js = CoffeeScript.compile(query)
-        print js
         eval(js)
         esc()
 
@@ -194,14 +171,12 @@ $("#search-input").keyup (e) ->
     query = $input.val()
     if not query or query.length == 1
         return
-    print "looking for", query, current_pad.edit
     cursor = editor.getSearchCursor(query)
     while cursor.findNext()
         t = editor.markText(cursor.from(), cursor.to(), "searched")
         marked.push(t)
 
     if e.which == ENTER
-        print "next", query
         cur_pos = editor.getCursor()
         if last_query != query
             last_pos = null
@@ -223,13 +198,11 @@ $("#search-input").keyup (e) ->
                 if not cursor.findNext()
                     return
 
-        print "set selection",e, cursor.from(), cursor.to()
         editor.setSelection(cursor.from(), cursor.to())
         last_query = query
         last_pos = cursor.to()
 
 $("#replace-input").keyup (e) ->
-    print "replace"
     editor = current_pad.edit
     m.clear() for m in marked
     marked = []
@@ -237,10 +210,8 @@ $("#replace-input").keyup (e) ->
     text = $("#search-input").val()
     replace = $input.val()
 
-    print "replace", text, replace
     return if not text
 
-    print e.which
     if false and e.which == ENTER
         # replace all
         cursor = editor.getSearchCursor(text)
@@ -270,7 +241,6 @@ $("#file-input").keyup (e) ->
         s = m[2]
     else
         dir = base_dir
-    print "dir", dir, "file", s
 
     if e.which == ESC
         $input.val("")
@@ -278,25 +248,10 @@ $("#file-input").keyup (e) ->
         current_pad.edit.focus()
 
     else if e.which == ENTER
-
         input = $input.val()
-        if input[0...5] == "open "
-            input = input[5...]
-            old_current = current_pad
-            current_pad = new Pad()
-            current_pad.open_file(input)
-            current_pad.focus()
-            current_pad.move(old_current)
-
-        else if input[0...5] == "goto "
-            input = input[5...]
-            for pad in pads
-                if pad.filename == input
-                    current_pad = pad
-                    current_pad.focus()
-                    break
+        current_pad.open_file(input)
+        current_pad.focus()
         resize()
-
         $input.val("")
         esc()
     else if e.which == UP or e.which == DOWN
@@ -315,24 +270,11 @@ $("#file-input").keyup (e) ->
         chosen.addClass("highlight")
         $input.val(chosen.text())
     else
-        print "do suggestions"
         suggest = (files) ->
             $sug.children().remove()
             for f in files
                 f = f.replace(s,"<b>#{s}</b>")
-                $sug.append("<div class='sug'>open #{f}<div>")
-
-             for pad in pads
-                f = pad.filename
-                m = f.match("(.*)/([^/]*$)")
-                i = m[2].indexOf(s)
-                print "local", m, s, i
-                if i != -1
-                    f = f.replace(s,"<b>#{s}</b>")
-                    $sug.append("<div class='sug local'>goto #{f}<div>")
-
-
-            #$sug.children().last().addClass("highlight")
+                $sug.append("<div class='sug'>#{f}<div>")
         if s != ""
             $.ajax "/suggest",
                 dataType: "json"
@@ -347,20 +289,24 @@ $("#file-input").keyup (e) ->
 $.ajax "/start",
     dataType: "json"
     error: (e) -> warn "error getting start data", e
-    success: (settings) ->
-        print "settings", settings
+    success: (data) ->
+        settings = data
+        print "started with settings", settings
         base_dir = settings.base_dir ? "/"
-        if settings.pads
-            for spad in settings.pads
-                pad = new Pad()
-                pad.open_file(spad.filename)
-        else
-            new Pad()
-
-        current_pad = pads[settings.current_pad]
-        current_pad ?= pads[0]
+        current_pad = new Pad()
+        load_from_url()
         current_pad.focus()
         resize()
+
+
+load_from_url = ->
+    path = location.pathname
+    if path[0..5] == "/edit/"
+        filepath = path[6..]
+        print "load from url file", filepath
+
+        current_pad.open_file(filepath)
+
 
 common_str = (strs) ->
     return "" if strs.length == 0
@@ -424,8 +370,10 @@ class Pad
             onFocus: @focused
             theme: "midnight"
             #keyMap: "re_edit"
+            onScroll: @scrolled
+            onCursorActivity: @moved
+
             onChange: @update_clones
-            #onCursorActivity: @update_line
 
         @edit.re_pad = @
         @edit.setOption("electricChars", false)
@@ -463,9 +411,15 @@ class Pad
 
     update_url: =>
         path = @filename
+        if not path
+            return
         if path[0..base_dir.length] == base_dir
             path = path[base_dir.length..]
         document.title = path
+        url = "/edit/"+@filename
+        if location.pathname != url
+            stateObj = {filename: @filename}
+            history.pushState(stateObj, @filename, url)
 
     update_clones: =>
         if current_pad != @
@@ -486,7 +440,7 @@ class Pad
         print @current_line
 
     open_file: (file_name) =>
-        $.ajax "open"
+        $.ajax "/open"
             dataType: "json"
             data:
                 path: file_name
@@ -494,11 +448,11 @@ class Pad
             success: (json) =>
                 saved_pos[@filename] = @edit.getCursor()
                 @filename = file_name
-                print json
                 if json.error?
                     warn(json.error)
                     @edit.setOption("mode", json.mode)
                     @edit.setValue("")
+                    #@update_url()
                 else
                     @filename = json.path
                     print "mode", json.mode
@@ -509,8 +463,20 @@ class Pad
                     @edit.setOption("indentUnit", guess_indent(json.text))
                     if @filename of saved_pos
                         @edit.setCursor(saved_pos[@filename])
-                    set_pads()
                     resize()
+                    @update_url()
+
+                    @edit.refresh()
+                    print "settings", settings, @filename
+                    if settings.files and
+                       settings.files[@filename] and
+                       settings.files[@filename].cursor
+                        cursor = settings.files[@filename].cursor
+
+                        print "set cursor", cursor.line, cursor.ch
+                        @edit.setCursor(cursor.line, cursor.ch)
+
+
                     #tools(@edit)
             error: (e) -> warn "could not open", @filename, e
 
@@ -540,51 +506,27 @@ class Pad
         #quick_tool()
         return false
 
+    scrolled: (e) =>
+        #print @edit
+        #print @edit.getScrollInfo()
 
-class Terminal
+    moved: (e) =>
 
-    constructor: ->
-        @$holder = $("<div class='terminal'></div>")
-        @$input = $("<input class='cmdline'></input>")
-        @$input.keyup (e) => @onkey(e)
+        if not settings.files?
+            settings.files = {}
+        if not settings.files[@filename]
+            settings.files[@filename] = {}
 
-        @$holder.append(@$input)
-        $("body").append(@$holder)
-        pads.push(@)
+        settings.files[@filename].cursor = @edit.getCursor()
 
+        $.ajax "/settings_files"
+            dataType: "json"
+            type: "POST"
+            data:
+                path: @filename
+                set: settings.files[@filename]
+                r: Math.random()
 
-    onkey: (e) ->
-        if e.which == ENTER
-            cmd = @$input.val()
-            @$input.val("")
-            print cmd
-            @$input.before("<pre class='in'>#{cmd}</pre>")
-
-            $.ajax "/cmd",
-                type: "POST"
-                data:
-                    "cmd": cmd
-                dataType: "json"
-                success: (data) =>
-                    info "text", data.text, data.code
-
-                    if data.code != 0
-                        @$input.before("<pre class='error-code out'>Error code: #{data.code}</pre>")
-                    @$input.before("<pre class='out'>#{data.text}</pre>")
-                    @$holder.scrollTop(@$holder[0].scrollHeight);
-
-                error: => warn "could run command", cmd
-
-
-    container: ->
-        @$holder[0]
-
-    focus: ->
-        print "focused"
-        @$input.focus()
-
-    refresh: ->
-        print "refresh"
 
 open_file = ->
     esc()
@@ -617,135 +559,6 @@ command = ->
     $("#command-box").show()
     $("#command-input").focus()
 
-goto = ->
-    esc()
-    $("#goto-box").show()
-    $("#goto-input").focus()
-
-
-terminal = ->
-    # changes current pain to a terminal
-    esc()
-    pad = new Terminal()
-    current_pad = pad
-    current_pad.focus()
-    resize()
-
-prev_pad = ->
-    prev = false
-    for pad in pads
-        if current_pad == pad and prev
-            current_pad = prev
-            current_pad.focus()
-            resize()
-            set_pads()
-            return true
-        prev = pad
-    return false
-
-next_pad = ->
-    next = false
-    for pad in pads
-        if next == true
-            current_pad = pad
-            current_pad.focus()
-            resize()
-            set_pads()
-            return true
-        if current_pad == pad
-            next = true
-    return false
-
-close_pad = ->
-    print "close pad", current_pad
-    if pads.length <= 1
-        return
-    x_pad = current_pad
-    x_pad.edit.toTextArea()
-    x_pad.textarea.remove()
-    prev_pad() or next_pad()
-    pads.remove(x_pad)
-    print "pads", pads
-    resize()
-    set_pads()
-
-###
-tools_on = true
-last_timeout = false
-quick_tool = ->
-    return
-    if last_timeout
-        clearTimeout(last_timeout)
-    last_timeout = setTimeout(tools, 10000)
-
-
-messages = []
-clear_tools = ->
-    for m in messages
-        m.remove()
-    messages = []
-
-tools_key = ->
-    tools_on = not tools_on
-    tools()
-
-tools = (edit) ->
-    return
-    clear_tools()
-    return if not tools_on
-    last_timeout = false
-
-    console.log "running tools..."
-    if not edit?
-        edit = current_pad.edit
-    mode = edit.getOption("mode")
-    text = edit.getValue()
-    console.log mode
-    if mode == "coffeescript"
-
-        try
-            CoffeeScript.compile(text)
-        catch e
-            m = e.message.match(/Parse error on line (\d*): (.*)/)
-            if m
-                [full, line, msg] = m
-                console.log line, msg
-                msg = "^ "+msg
-                error = $("<div class='error'><div class='msg'>#{msg}</div></div>")
-                messages.push(error)
-                line = parseInt(line)-1
-                l = edit.getLine(line)
-                console.log l
-                [full, space] = l.match(/(\s*).*$/)
-                error.css("width", l.trim().length*8+"px")
-                edit.addWidget({line:line, ch:space.length}, error[0])
-                return
-        return
-        # now lint
-        configuration =
-          "indentation":
-              "value": edit.getOption("indentUnit"),
-              "level": "error"
-          "no_implicit_braces":
-              "level": "error"
-          "no_trailing_semicolons":
-              "level": "error"
-          "no_plusplus" :
-              "level": "error"
-          "no_trailing_whitespace":
-              "level": "ignore"
-
-        for hint in coffeelint.lint(text, configuration).reverse()
-            console.log hint, hint.message
-            msg = "^ " + hint.message
-            error = $("<div class='hint'><div class='msg'>#{msg}</div></div>")
-            messages.push(error)
-            l = edit.getLine(hint.lineNumber-1)
-            [full, space] = l.match(/(\s*).*$/)
-            error.css("width", l.trim().length*8+"px")
-            edit.addWidget({line:hint.lineNumber-1, ch: space.length}, error[0])
-###
-
 
 resize()
 
@@ -753,11 +566,6 @@ resize()
 key "ctr-l", -> open_file()
 key "ctr-s", -> save_file(current_pad)
 key "ctr-f", -> search(current_pad)
-key "ctr-y", -> goto()
 key "ctr-a", -> command()
-key "ctr-t", -> terminal()
-key "ctr-[", -> prev_pad()
-key "ctr-]", -> next_pad()
-key "ctr-n", -> close_pad()
 key "esc", -> esc()
 

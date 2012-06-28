@@ -162,6 +162,28 @@ app.post '/settings', (req, res) ->
     print "set", set
     print " ->", settings
 
+app.post '/settings_files', (req, res) ->
+    auth(res)
+    set = req.param("set")
+    filename = req.param("path")
+
+    if not settings.files?
+        settings.files = {}
+
+    if not settings.files[filename]?
+        settings.files[filename] = {}
+
+    for name of set
+        settings.files[filename][name] = set[name]
+    res.send("ok")
+    print "set", set
+    print " ->", settings
+
+
+app.get /edit\/.*/, (req, res) ->
+    print "here", req.url
+    #path = req.url[6..]
+    res.sendfile("index.html")
 
 ###
 opts =
@@ -176,4 +198,5 @@ req.on 'error', ->
 ###
 
 print "app listen"
-app.listen(1988)
+app.listen(1989)
+
