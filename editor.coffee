@@ -563,7 +563,7 @@ save_file = (pad) ->
     text = pad.edit.getValue()
     # strip trailing spaces
     text = text.replace(/[ \t\r]*\n/g,"\n").replace(/\s*$/g, "\n")
-    $.ajax "save",
+    $.ajax "/save",
         type: "POST"
         data:
             path: pad.filename
