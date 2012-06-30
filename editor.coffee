@@ -66,7 +66,7 @@ keys = (e) ->
         e.preventDefault()
         e.stopPropagation()
         return false
-    
+
 $(document).keydown(keys)
 key = (str, fn) ->
     stroke_map[str] = fn
@@ -112,7 +112,7 @@ window.wrap = -> current_pad.edit.setOption("lineWrapping", true)
 window.nowrap = -> current_pad.edit.setOption("lineWrapping", false)
 
 window.font = ->
-    
+
 
 # makes sure the selection accupies full lines
 window.boxsel = ->
@@ -145,7 +145,7 @@ window.unplace = (c) ->
 
 window.onpopstate = (event) ->
     load_from_url()
-    
+
 $("#goto-box").hide()
 $("#goto-input").keyup (e) ->
     editor = current_pad.edit
@@ -378,10 +378,11 @@ class Pad
         # @textarea = $("#code")
         @edit = CodeMirror.fromTextArea @textarea[0],
             mode:  "javascript"
-            tabMode: "shift"
+            smartIndent: false
             matchBrackets: true
             onFocus: @focused
             theme: "midnight"
+            indentWithTabs: false
             #keyMap: "re_edit"
             onScroll: @scrolled
             onCursorActivity: @moved
@@ -485,12 +486,12 @@ class Pad
                     if settings.files and
                        settings.files[@filename]
                         cursor = settings.files[@filename].cursor
-                        scroll = settings.files[@filename].scroll                        
+                        scroll = settings.files[@filename].scroll
                         if cursor
                             @edit.setCursor(cursor.line, cursor.ch)
-                        if scroll                           
+                        if scroll
                             @edit.scrollTo(0, scroll)
-    
+
                     #tools(@edit)
             error: (e) -> warn "could not open", @filename, e
 
@@ -526,8 +527,8 @@ class Pad
 
     moved: (e) =>
         #print @edit.getScrollInfo()
-        
-        
+
+
     save_pos: (e) =>
 
         if not settings.files?
@@ -552,7 +553,7 @@ goto_line = ->
     esc()
     $("#goto-box").show()
     $("#goto-input").focus()
-    
+
 open_file = ->
     esc()
     $("#open-box").show()
@@ -562,7 +563,11 @@ save_file = (pad) ->
     print "save"
     text = pad.edit.getValue()
     # strip trailing spaces
-    text = text.replace(/[ \t\r]*\n/g,"\n").replace(/\s*$/g, "\n")
+
+    tabsize = pad.edit.getOption('tabSize')
+    space = (" " for _ in [0...tabsize]).join("")
+    text = text.replace(/\t/g, space)
+    text = text.replace(/[ \r]*\n/g,"\n").replace(/\s*$/g, "\n")
     $.ajax "/save",
         type: "POST"
         data:
