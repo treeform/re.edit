@@ -7,9 +7,9 @@ $highlight: #fcaf3e;
 /* Loosely based on the Midnight Textmate theme */
 
 .cm-s-midnight { background: #1E2325; color: #babdb6; }
-.cm-s-midnight span.CodeMirror-selected {
-    background: #391f21 !important;
-    color: #959793 !important  }
+div.CodeMirror-selected {
+    background: #791D22 !important;
+}
 .cm-s-midnight .CodeMirror-gutter { background: #0a001f; border-right: 1px solid #aaa; }
 .cm-s-midnight .CodeMirror-gutter-text { color: #f8f8f8; }
 .cm-s-midnight .CodeMirror-cursor { border-left: 1px solid white !important; }
@@ -30,6 +30,11 @@ $highlight: #fcaf3e;
 .cm-s-midnight span.cm-variable-2 { color: #ffd500; }
 
 
+/* scroll space around the document */
+.CodeMirror-lines {
+    border-top: 300px solid #181b1c;
+    border-bottom: 300px solid #181b1c;
+}
 
 body, textarea {
   padding:0px;
@@ -38,7 +43,7 @@ body, textarea {
   font-family: monospace;
   font-weight: bold;
   overflow: hidden;
-  background: black;
+  background: white;
 
   ::-webkit-scrollbar {
     background: transparent;

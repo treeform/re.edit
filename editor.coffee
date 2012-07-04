@@ -66,7 +66,6 @@ keys = (e) ->
         e.preventDefault()
         e.stopPropagation()
         return false
-
 $(document).keydown(keys)
 key = (str, fn) ->
     stroke_map[str] = fn
@@ -77,10 +76,21 @@ resize = ->
     $win = $(window)
     width = $win.width()
     height = $win.height()
+
+    height
+
     if current_pad?
         $html = $(current_pad.container())
+        print current_pad.container()
+
+
+        $(".CodeMirror-lines").css {
+            'border-top-width': height - 50
+            'border-bottom-width': height - 50
+        }
+
         $html.css
-            position: "absolute"
+            position: "fixed"
             top: 0
             height: height
             left: 0
@@ -378,16 +388,19 @@ class Pad
         # @textarea = $("#code")
         @edit = CodeMirror.fromTextArea @textarea[0],
             mode:  "javascript"
-            smartIndent: false
             matchBrackets: true
             onFocus: @focused
             theme: "midnight"
-            indentWithTabs: false
-            #keyMap: "re_edit"
-            onScroll: @scrolled
-            onCursorActivity: @moved
 
-            onChange: @update_clones
+            indentWithTabs: false
+            smartIndent: false
+            electricChars: false
+
+            #keyMap: "re_edit"
+            #onScroll: @scrolled
+            #onCursorActivity: @moved
+
+            #onChange: @update_clones
 
         @edit.re_pad = @
         @edit.setOption("electricChars", false)
@@ -518,28 +531,25 @@ class Pad
                             @edit.setCursor(pos.line, pos.ch + add.length)
                     key.stop()
                     return true
+            print "normal tab here"
         #quick_tool()
         return false
 
     scrolled: (e) =>
         #print @edit
-        print @edit.getScrollInfo()
+        #print @edit.getScrollInfo()
 
     moved: (e) =>
         #print @edit.getScrollInfo()
 
-
     save_pos: (e) =>
-
+        print "save pos"
         if not settings.files?
             settings.files = {}
         if not settings.files[@filename]
             settings.files[@filename] = {}
-
         settings.files[@filename].cursor = @edit.getCursor()
         settings.files[@filename].scroll = @edit.getScrollInfo().y
-
-
         $.ajax "/settings_files"
             dataType: "json"
             type: "POST"
@@ -599,4 +609,3 @@ key "ctr-f", -> search(current_pad)
 key "ctr-a", -> command()
 key "ctr-y", -> goto_line()
 key "esc", -> esc()
-
